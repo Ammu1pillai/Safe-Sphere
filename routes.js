@@ -1,7 +1,6 @@
 const express = require('express'); // Import the database connection from a separate file
 const router = express.Router();
 module.exports = (db) => {  // Accept db connection as argument
-
 router.get('/', (req, res) => {
   res.send('Women Safety API is running');
 });
@@ -37,39 +36,60 @@ router.post('/api/incidents', (req, res) => {
   });
 });
 
- router.put('/api/incidents/:id', (req, res) => {
-    const incidentId = req.params.id;  // Get the incident ID from URL parameter
+router.put('/api/incidents/:id', (req, res) => {
+    const incidentId = req.params.id;
     const { location, description, status } = req.body;
 
     if (!location || !description || !status) {
       return res.status(400).send('All fields (location, description, status) are required.');
     }
 
-    const query = 'UPDATE incidents SET location = ?, description = ?, status = ? WHERE id = ?';
-    db.query(query, [location, description, status, incidentId], (err) => {
+    const query = 'SELECT * FROM incidents WHERE id = ?';
+    db.query(query, [incidentId], (err, result) => {
       if (err) {
-        console.error('Error updating incident:', err);
-        res.status(500).send('Error updating incident');
-      } else {
+        console.error('Error fetching incident:', err);
+        return res.status(500).send('Error fetching incident');
+      }
+      if (result.length === 0) {
+        return res.status(404).send('Incident not found');
+      }
+
+      const updateQuery = 'UPDATE incidents SET location = ?, description = ?, status = ? WHERE id = ?';
+      db.query(updateQuery, [location, description, status, incidentId], (err) => {
+        if (err) {
+          console.error('Error updating incident:', err);
+          return res.status(500).send('Error updating incident');
+        }
         res.status(200).send('Incident updated');
-      }
+      });
     });
   });
 
-  // 📌 Route to delete an incident (DELETE method)
+  // 📌 Route to delete an incident
   router.delete('/api/incidents/:id', (req, res) => {
-    const incidentId = req.params.id;  // Get the incident ID from URL parameter
+    const incidentId = req.params.id;
 
-    const query = 'DELETE FROM incidents WHERE id = ?';
-    db.query(query, [incidentId], (err) => {
+    const query = 'SELECT * FROM incidents WHERE id = ?';
+    db.query(query, [incidentId], (err, result) => {
       if (err) {
-        console.error('Error deleting incident:', err);
-        res.status(500).send('Error deleting incident');
-      } else {
-        res.status(200).send('Incident deleted');
+        console.error('Error fetching incident:', err);
+        return res.status(500).send('Error fetching incident');
       }
+      if (result.length === 0) {
+        return res.status(404).send('Incident not found');
+      }
+
+      const deleteQuery = 'DELETE FROM incidents WHERE id = ?';
+      db.query(deleteQuery, [incidentId], (err) => {
+        if (err) {
+          console.error('Error deleting incident:', err);
+          return res.status(500).send('Error deleting incident');
+        }
+        res.status(200).send('Incident deleted');
+      });
     });
   });
+  
 return router;
 };
 
